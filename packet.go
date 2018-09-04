@@ -58,7 +58,11 @@ type RunApi struct {
 	request     *http.Request
 	config      Config
 	//cookie      map[string]*ClientCookie
+<<<<<<< HEAD
 	cookie *ServCookie
+=======
+	cookie ServCookie
+>>>>>>> b89ebaeb7635a42588f8c80818a027f002e8062c
 	sync.Mutex
 }
 
@@ -321,7 +325,11 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 					response:    res,
 					request:     req,
 					config:      f.config,
+<<<<<<< HEAD
 					cookie:      &f.cookie,
+=======
+					cookie:      f.cookie,
+>>>>>>> b89ebaeb7635a42588f8c80818a027f002e8062c
 				}
 
 				a.setId()
