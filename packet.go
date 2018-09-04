@@ -343,15 +343,8 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 				flagok = true
 				ch := make(chan bool)
 				go func() {
-					defer func() {
-						if r := recover(); r != nil {
-							panic("Recovered in func")
-						}
-					}()
 
 					ftype = append(ftype, reflect.ValueOf(a))
-
-					//		fn := reflect.Indirect(reflect.ValueOf(&c.functionRun.handle)).Elem()
 					fn := reflect.ValueOf(f.funcAPI[key].handle)
 
 					argvCall := make([]reflect.Value, 0)
