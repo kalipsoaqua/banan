@@ -4,7 +4,7 @@
 *Маленький web  framework* 
 
 ```
-func HandlerFinans(rw *web.RunApi) {
+func HandlerTest(rw *web.RunApi) {
   vv := rw.Form()
   log.Println(vv)
   rw.JSON(struct{OK int}{200})
