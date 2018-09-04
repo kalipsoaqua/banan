@@ -23,37 +23,33 @@ import (
 	"net/url"
 )
 
-/*
-	FuncApi - struct function
-	pattern - name function
-	types - type function (GET, PUT, DELETE, POST)
-	handle - handle function
-	arg    - list arguments
-*/
-
 const (
-	// Не использовать основной шаблон
-	NO_INDEX = 1 
-	// Пустая константа для кросдомена
-	CROSS    = 2 
+	// NOINDEX - не использовать основной шаблон
+	NOINDEX = 1
+	// CROSS - пустая константа для кросдомена
+	CROSS = 2
 )
 
-type FuncApi struct {
+// FuncAPI структура для handler функций
+type FuncAPI struct {
 	pattern *regexp.Regexp
 	types   string
 	handle  interface{}
 	arg     []interface{}
 }
 
+// Params - параметры переданные через route
 type Params []string
 
+// ServCookie - db cookie
 type ServCookie struct {
 	sync.Mutex
 	db map[string]*ClientCookie
 }
 
-type RunApi struct {
-	functionRun *FuncApi
+// RunAPI - структура callback
+type RunAPI struct {
+	functionRun *FuncAPI
 	flagRun     bool
 	ftype       []reflect.Value
 	response    http.ResponseWriter
@@ -63,18 +59,22 @@ type RunApi struct {
 	sync.Mutex
 }
 
+// HandleFunc empty type func
 type HandleFunc func(...interface{})
 
+// Directory - path to file
 type Directory struct {
 	Name string
 	Path string
 }
 
+// MimeTypes - структура mime
 type MimeTypes struct {
 	Ext      string
 	MimeType string
 }
 
+// Config - опции банана
 type Config struct {
 	Static       Directory
 	Template     Directory
@@ -87,8 +87,9 @@ type Config struct {
 	Logger       *log.Logger
 }
 
+// Banan - struct begin
 type Banan struct {
-	funcApi   []*FuncApi
+	funcAPI   []*FuncAPI
 	prefix    string
 	ftype     []reflect.Value
 	config    Config
@@ -98,6 +99,7 @@ type Banan struct {
 	basicMsg  string
 }
 
+// ClientCookie - структура для хранения сессии клиента
 type ClientCookie struct {
 	argv       map[string]interface{}
 	dateUpdate int64
@@ -114,15 +116,17 @@ var memtype = map[string]string{
 	"txt":  "text/plain",
 }
 
+// CacheFile - закешированные шаблоны
 type CacheFile struct {
 	Buffer     *bytes.Buffer
 	TimeModify time.Time
 }
 
 var (
-	bufferFile  map[string]*CacheFile
-	mutex       sync.Mutex
-	OsSeparator string = "/"
+	bufferFile map[string]*CacheFile
+	mutex      sync.Mutex
+	// OsSeparator сепаратор пути по умолчанию в зависимости от OS
+	OsSeparator = "/"
 	logCanal    chan string
 )
 
@@ -132,12 +136,13 @@ func (f *Banan) logging() {
 	}
 }
 
+// Default - Инстализация банана
 func Default() *Banan {
 	f := Banan{}
 	if runtime.GOOS == "windows" {
 		OsSeparator = "\\"
 	}
-	f.funcApi = make([]*FuncApi, 0)
+	f.funcAPI = make([]*FuncAPI, 0)
 	bufferFile = make(map[string]*CacheFile)
 	logCanal = make(chan string, 10000)
 
@@ -155,12 +160,14 @@ func Default() *Banan {
 	return &f
 }
 
+// Work -  изменить деректрию по умолчанию
 func (f *Banan) Work() string {
 	argsWithProg := os.Args
-	tmp_arr := strings.Split(argsWithProg[0], OsSeparator)
-	return strings.Join(tmp_arr[:len(tmp_arr)-1], OsSeparator) + OsSeparator
+	tmp := strings.Split(argsWithProg[0], OsSeparator)
+	return strings.Join(tmp[:len(tmp)-1], OsSeparator) + OsSeparator
 }
 
+// Option - изменить опции по default
 func (f *Banan) Option(c Config) {
 	if c.Layer != "" {
 		f.config.Layer = c.Layer
@@ -186,17 +193,20 @@ func (f *Banan) Option(c Config) {
 	f.config.Funcs = c.Funcs
 }
 
+// Use - добавить стронние обработчики (например database)
 func (f *Banan) Use(m ...interface{}) {
 	for _, tmp := range m {
 		f.ftype = append(f.ftype, reflect.ValueOf(tmp))
 	}
 }
 
+// Route - виртуальный роутер
 func (f *Banan) Route(pref string) *Banan {
 	f.prefix = pref
 	return f
 }
 
+// Run - запуск сервиса
 func (f *Banan) Run(addr string, cert ...string) {
 	fileList := []string{}
 	filepath.Walk(f.config.Template.Path, func(path string, g os.FileInfo, err error) error {
@@ -262,6 +272,7 @@ func isMethod(method string, req *http.Request) bool {
 	return false
 }
 
+// BasicAuth - база клиентов которым разрешено
 func (f *Banan) BasicAuth(user map[string]string, msg string) {
 	f.basicAuth = true
 	f.basicUser = user
@@ -304,7 +315,7 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		for key, fun := range f.funcApi {
+		for key, fun := range f.funcAPI {
 			if fun.pattern.MatchString(req.URL.Path) && isMethod(fun.types, req) {
 				ftype := make([]reflect.Value, 0)
 				ftype = append(ftype, f.ftype...)
@@ -314,8 +325,8 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 					reflect.ValueOf(Params(fun.pattern.FindStringSubmatch(req.URL.Path)[1:])),
 				)
 
-				a := &RunApi{
-					functionRun: f.funcApi[key],
+				a := &RunAPI{
+					functionRun: f.funcAPI[key],
 					flagRun:     true,
 					ftype:       ftype,
 					response:    res,
@@ -324,7 +335,7 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 					cookie:      &f.cookie,
 				}
 
-				a.setId()
+				a.setID()
 				flagok = true
 				ch := make(chan bool)
 				go func() {
@@ -337,11 +348,11 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 					ftype = append(ftype, reflect.ValueOf(a))
 
 					//		fn := reflect.Indirect(reflect.ValueOf(&c.functionRun.handle)).Elem()
-					fn := reflect.ValueOf(f.funcApi[key].handle)
+					fn := reflect.ValueOf(f.funcAPI[key].handle)
 
 					argvCall := make([]reflect.Value, 0)
 
-					for _, funcArgv := range f.funcApi[key].arg {
+					for _, funcArgv := range f.funcAPI[key].arg {
 						for key2, handlerArgv := range ftype {
 							if funcArgv == handlerArgv.Type() {
 								argvCall = append(argvCall, ftype[key2])
@@ -366,11 +377,11 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if !flagok {
-		url_path := strings.Replace(req.URL.Path, "/", OsSeparator, -1)
-		if strings.Contains(url_path, f.config.Static.Name+OsSeparator) {
+		urlPath := strings.Replace(req.URL.Path, "/", OsSeparator, -1)
+		if strings.Contains(urlPath, f.config.Static.Name+OsSeparator) {
 			var ok bool
-			if _, ok = bufferFile[url_path]; (!ok && f.config.Cache) || !f.config.Cache {
-				kk := strings.Split(url_path, f.config.Static.Name)
+			if _, ok = bufferFile[urlPath]; (!ok && f.config.Cache) || !f.config.Cache {
+				kk := strings.Split(urlPath, f.config.Static.Name)
 				dataByte, err := ioutil.ReadFile(f.config.Static.Path + strings.Join(kk[1:], OsSeparator))
 				if err != nil {
 					logCanal <- fmt.Sprint("[", req.RemoteAddr, "] ERROR open file ", req.URL.Path)
@@ -400,18 +411,22 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 }
 
+// Get - route to methon GET
 func (f *Banan) Get(filter string, function interface{}) {
 	f.appHandler("GET", filter, function)
 }
 
+// Post - route to methon POST
 func (f *Banan) Post(filter string, function interface{}) {
 	f.appHandler("POST", filter, function)
 }
 
+// Put - route to methon PUT
 func (f *Banan) Put(filter string, function interface{}) {
 	f.appHandler("PUT", filter, function)
 }
 
+// Delete - route to methon DELETE
 func (f *Banan) Delete(filter string, function interface{}) {
 	f.appHandler("DELETE", filter, function)
 }
@@ -423,7 +438,7 @@ func (f *Banan) appHandler(method, filter string, function interface{}) {
 	}
 	//fmt.Println("^" + strings.Replace(f.prefix+filter, ":param", `(.*?)[\/]`, -1) + "$")
 	filter = strings.Replace(filter, "/", "\\/", -1)
-	f.funcApi = append(f.funcApi, &FuncApi{
+	f.funcAPI = append(f.funcAPI, &FuncAPI{
 		types:   method,
 		pattern: regexp.MustCompile("^" + strings.Replace(f.prefix+filter, ":param", `(.*?)[\/]{0,1}`, -1) + "$"),
 		handle:  function,
@@ -431,7 +446,8 @@ func (f *Banan) appHandler(method, filter string, function interface{}) {
 	})
 }
 
-func (c *RunApi) JSON(h interface{}, cross ...int) {
+// JSON - функция формирующая в ответ json из переданной структуры
+func (c *RunAPI) JSON(h interface{}, cross ...int) {
 	result, err := json.Marshal(h)
 	if err != nil {
 		logCanal <- fmt.Sprint("[", c.request.RemoteAddr, "] ERROR = ", err)
@@ -446,7 +462,8 @@ func (c *RunApi) JSON(h interface{}, cross ...int) {
 	c.response.Write(result)
 }
 
-func (c *RunApi) TXT(h interface{}, cross ...int) {
+// TXT - передать ответ как текст
+func (c *RunAPI) TXT(h interface{}, cross ...int) {
 	c.response.Header().Set("Content-Type", "text/plan")
 	if len(cross) > 0 {
 		c.response.Header().Set("Access-Control-Allow-Origin", "*")
@@ -461,7 +478,8 @@ func (c *RunApi) TXT(h interface{}, cross ...int) {
 	}
 }
 
-func (c *RunApi) XML(h interface{}) {
+// XML - передать ответ как type xml
+func (c *RunAPI) XML(h interface{}) {
 	c.response.Header().Set("Content-Type", "text/xml")
 
 	switch h.(type) {
@@ -482,15 +500,15 @@ func genChar() string {
 	return string(mm)
 }
 
-func (c *RunApi) parseCookie() map[string]string {
+func (c *RunAPI) parseCookie() map[string]string {
 	tmp := make(map[string]string)
 	cookie := c.request.Header.Get("Cookie")
 	if cookie != "" {
-		tmp_cookie := strings.Split(cookie, ";")
-		for _, value := range tmp_cookie {
-			tmp_p := strings.Split(value, "=")
-			if len(tmp_p) > 1 {
-				tmp[tmp_p[0]] = strings.Join(tmp_p[1:], "")
+		tmpCookie := strings.Split(cookie, ";")
+		for _, value := range tmpCookie {
+			valueTmp := strings.Split(value, "=")
+			if len(valueTmp) > 1 {
+				tmp[valueTmp[0]] = strings.Join(valueTmp[1:], "")
 			}
 		}
 
@@ -498,7 +516,7 @@ func (c *RunApi) parseCookie() map[string]string {
 	return tmp
 }
 
-func (c *RunApi) createKeyCookie(key string) {
+func (c *RunAPI) createKeyCookie(key string) {
 	c.cookie.Lock()
 	defer func() {
 		if r := recover(); r != nil {
@@ -516,7 +534,7 @@ func (c *RunApi) createKeyCookie(key string) {
 	}
 }
 
-func (c *RunApi) setId() string {
+func (c *RunAPI) setID() string {
 	//Secure only https
 	key := genChar()
 	pair := c.parseCookie()
@@ -532,7 +550,8 @@ func (c *RunApi) setId() string {
 	return key
 }
 
-func (c *RunApi) Set(name string, value interface{}) {
+// Set - установить значение в сессии по name
+func (c *RunAPI) Set(name string, value interface{}) {
 	pair := c.parseCookie()
 	c.cookie.Lock()
 	defer c.cookie.Unlock()
@@ -543,12 +562,13 @@ func (c *RunApi) Set(name string, value interface{}) {
 		}
 	}
 
-	session_id := c.setId()
-	c.cookie.db[session_id].argv[name] = value
-	c.cookie.db[session_id].dateUpdate = time.Now().Unix()
+	sessionID := c.setID()
+	c.cookie.db[sessionID].argv[name] = value
+	c.cookie.db[sessionID].dateUpdate = time.Now().Unix()
 }
 
-func (c *RunApi) Delete(name string) {
+// Delete - удалить из сессий значение по name
+func (c *RunAPI) Delete(name string) {
 	pair := c.parseCookie()
 	c.cookie.Lock()
 	defer c.cookie.Unlock()
@@ -559,7 +579,8 @@ func (c *RunApi) Delete(name string) {
 	}
 }
 
-func (c *RunApi) Close() {
+// Close - закрыть сессию
+func (c *RunAPI) Close() {
 	c.cookie.Lock()
 	defer c.cookie.Unlock()
 	pair := c.parseCookie()
@@ -569,7 +590,8 @@ func (c *RunApi) Close() {
 	}
 }
 
-func (c *RunApi) Get(name string) interface{} {
+// Get - прочитать из сессии значение по name
+func (c *RunAPI) Get(name string) interface{} {
 	c.cookie.Lock()
 	defer c.cookie.Unlock()
 	pair := c.parseCookie()
@@ -584,21 +606,25 @@ func (c *RunApi) Get(name string) interface{} {
 	return nil
 }
 
-func (c *RunApi) RemoteIp() string {
+// RemoteIP - с каким ip пришол клиент
+func (c *RunAPI) RemoteIP() string {
 	return strings.Split(c.request.RemoteAddr, ":")[0]
 }
 
-func (c *RunApi) Header() http.Header {
+// Header -  прочитать заголовки
+func (c *RunAPI) Header() http.Header {
 	return c.request.Header
 }
 
-func (c *RunApi) Body() []byte {
+// Body - прочитать тело документа переданного от клиента
+func (c *RunAPI) Body() []byte {
 	defer c.request.Body.Close()
 	body, _ := ioutil.ReadAll(c.request.Body)
 	return body
 }
 
-func (c *RunApi) Form() url.Values {
+// Form  - парсим переданные данные от клиента
+func (c *RunAPI) Form() url.Values {
 	tmp := url.Values{}
 	err := c.request.ParseForm()
 	if err == nil {
@@ -616,7 +642,8 @@ func (c *RunApi) Form() url.Values {
 	return tmp
 }
 
-func (c *RunApi) Download(file string) {
+// Download - отдать клиенту файл
+func (c *RunAPI) Download(file string) {
 	tmp := strings.Split(file, "/")
 	f, err := os.Open(file)
 	if err != nil {
@@ -630,11 +657,13 @@ func (c *RunApi) Download(file string) {
 	}
 }
 
-func (c *RunApi) Redirect(url string) {
+// Redirect - переадресовать ответ в ...
+func (c *RunAPI) Redirect(url string) {
 	http.Redirect(c.response, c.request, url, http.StatusFound)
 }
 
-func (c *RunApi) HTML(template string, h interface{}, arg ...int) {
+// HTML - отдать как html страницу
+func (c *RunAPI) HTML(template string, h interface{}, arg ...int) {
 	body := ""
 
 	template = strings.Replace(template, "/", OsSeparator, -1)
@@ -642,7 +671,7 @@ func (c *RunApi) HTML(template string, h interface{}, arg ...int) {
 		index := strings.Replace(c.config.Layer, "."+c.config.Extension, "", 1)
 		body = strings.Replace(bufferFile[index].Buffer.String(), "{{ current }}", bufferFile[template].Buffer.String(), 1)
 	} else {
-		if arg[0] == NO_INDEX {
+		if arg[0] == NOINDEX {
 			body = bufferFile[template].Buffer.String()
 		}
 	}
@@ -665,7 +694,8 @@ func (c *RunApi) HTML(template string, h interface{}, arg ...int) {
 	}
 }
 
-func (c *RunApi) BuildHTML(template string, h interface{}, arg ...int) []byte {
+// BuildHTML - преварительно сформированная страница
+func (c *RunAPI) BuildHTML(template string, h interface{}, arg ...int) []byte {
 
 	var b bytes.Buffer
 
@@ -676,7 +706,7 @@ func (c *RunApi) BuildHTML(template string, h interface{}, arg ...int) []byte {
 		index := strings.Replace(c.config.Layer, "."+c.config.Extension, "", 1)
 		body = strings.Replace(bufferFile[index].Buffer.String(), "{{ current }}", bufferFile[template].Buffer.String(), 1)
 	} else {
-		if arg[0] == NO_INDEX {
+		if arg[0] == NOINDEX {
 			if v, ok := bufferFile[template]; ok {
 				body = v.Buffer.String()
 			}
@@ -703,7 +733,8 @@ func (c *RunApi) BuildHTML(template string, h interface{}, arg ...int) []byte {
 	return b.Bytes()
 }
 
-func (c *RunApi) TemplateHTML(template string, h interface{}, arg ...int) []byte {
+// TemplateHTML - преварительно сформированная страница из не кешированных шаблонов
+func (c *RunAPI) TemplateHTML(template string, h interface{}, arg ...int) []byte {
 
 	var b bytes.Buffer
 
@@ -729,7 +760,8 @@ func (c *RunApi) TemplateHTML(template string, h interface{}, arg ...int) []byte
 	return b.Bytes()
 }
 
-func (c *RunApi) IHTML(index string, h interface{}) {
+// IHTML - сформировать HTML ответ не из файла а из строковой переменной
+func (c *RunAPI) IHTML(index string, h interface{}) {
 
 	t := tmpl.New("foo")
 
@@ -750,7 +782,7 @@ func (c *RunApi) IHTML(index string, h interface{}) {
 	}
 }
 
-func (c *RunApi) run() {
+func (c *RunAPI) run() {
 	if c.flagRun {
 		c.ftype = append(c.ftype, reflect.ValueOf(c))
 		//		fn := reflect.Indirect(reflect.ValueOf(&c.functionRun.handle)).Elem()
