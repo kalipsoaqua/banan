@@ -57,12 +57,7 @@ type RunApi struct {
 	response    http.ResponseWriter
 	request     *http.Request
 	config      Config
-	//cookie      map[string]*ClientCookie
-<<<<<<< HEAD
-	cookie *ServCookie
-=======
-	cookie ServCookie
->>>>>>> b89ebaeb7635a42588f8c80818a027f002e8062c
+	cookie      *ServCookie
 	sync.Mutex
 }
 
@@ -123,7 +118,6 @@ type CacheFile struct {
 }
 
 var (
-	//	bufferFile  map[string]*bytes.Buffer
 	bufferFile  map[string]*CacheFile
 	mutex       sync.Mutex
 	OsSeparator string = "/"
@@ -325,11 +319,7 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 					response:    res,
 					request:     req,
 					config:      f.config,
-<<<<<<< HEAD
 					cookie:      &f.cookie,
-=======
-					cookie:      f.cookie,
->>>>>>> b89ebaeb7635a42588f8c80818a027f002e8062c
 				}
 
 				a.setId()
