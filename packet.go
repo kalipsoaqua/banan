@@ -279,28 +279,32 @@ func (f *Banan) BasicAuth(user map[string]string, msg string) {
 	f.basicMsg = msg
 }
 
+func (f *Banan) authOK(res http.ResponseWriter, req *http.Request) (userOK bool) {
+	res.Header().Set("WWW-Authenticate", `Basic realm="`+f.basicMsg+`"`)
+
+	username, password, authOK := req.BasicAuth()
+	if authOK == false {
+		http.Error(res, "Not authorized", 401)
+		return
+	}
+
+	for u, p := range f.basicUser {
+		if username == u && password == p {
+			userOK = true
+		}
+	}
+
+	if !userOK {
+		http.Error(res, "Not authorized", 401)
+		return
+	}
+	return
+}
+
 func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
-	if f.basicAuth {
-		res.Header().Set("WWW-Authenticate", `Basic realm="`+f.basicMsg+`"`)
-
-		username, password, authOK := req.BasicAuth()
-		if authOK == false {
-			http.Error(res, "Not authorized", 401)
-			return
-		}
-		userOk := false
-		for u, p := range f.basicUser {
-			if username == u && password == p {
-				userOk = true
-			}
-		}
-
-		if !userOk {
-			http.Error(res, "Not authorized", 401)
-			return
-		}
-
+	if f.basicAuth && !f.authOK(res, req) {
+		return
 	}
 
 	flagok := false
