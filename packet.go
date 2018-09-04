@@ -32,8 +32,8 @@ import (
 */
 
 const (
-	NO_INDEX = 1
-	CROSS    = 2
+	NO_INDEX = 1 // Не использовать основной шаблон
+	CROSS    = 2 // Пустая константа для кросдомена
 )
 
 type FuncApi struct {
