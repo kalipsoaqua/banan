@@ -301,7 +301,70 @@ func (f *Banan) authOK(res http.ResponseWriter, req *http.Request) (userOK bool)
 	return
 }
 
+func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok bool) {
+	for key, fun := range f.funcAPI {
+		if fun.pattern.MatchString(req.URL.Path) && isMethod(fun.types, req) {
+			ftype := make([]reflect.Value, 0)
+			ftype = append(ftype, f.ftype...)
+			ftype = append(ftype,
+				reflect.Indirect(reflect.ValueOf(&res)),
+				reflect.ValueOf(req),
+				reflect.ValueOf(Params(fun.pattern.FindStringSubmatch(req.URL.Path)[1:])),
+			)
+
+			a := &RunAPI{
+				functionRun: f.funcAPI[key],
+				flagRun:     true,
+				ftype:       ftype,
+				response:    res,
+				request:     req,
+				config:      f.config,
+				cookie:      &f.cookie,
+			}
+
+			a.setID()
+			flagok = true
+			ch := make(chan bool)
+			go func() {
+
+				ftype = append(ftype, reflect.ValueOf(a))
+				fn := reflect.ValueOf(f.funcAPI[key].handle)
+
+				argvCall := make([]reflect.Value, 0)
+
+				for _, funcArgv := range f.funcAPI[key].arg {
+					for key2, handlerArgv := range ftype {
+						if funcArgv == handlerArgv.Type() {
+							argvCall = append(argvCall, ftype[key2])
+						}
+					}
+				}
+
+				fn.Call(argvCall)
+
+				ch <- true
+			}()
+			select {
+			case <-ch:
+				break
+			case <-time.After(3 * time.Second):
+				break
+			}
+
+			break
+		}
+	}
+	return
+}
+
 func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+
+	if req.Method == "OPTIONS" {
+		res.Header().Set("Content-Type", "multipart/form-data")
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+		res.Header().Set("Access-Control-Allow-Headers", "Content-Type,Accept")
+		return
+	}
 
 	if f.basicAuth && !f.authOK(res, req) {
 		return
@@ -311,66 +374,7 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	logCanal <- fmt.Sprint("[", req.RemoteAddr, "] ", req.Proto, " "+req.Method+" ", req.URL, " ", req.Header)
 
 	if !strings.HasPrefix(req.URL.Path, "/"+f.config.Static.Name) {
-
-		if req.Method == "OPTIONS" {
-			res.Header().Set("Content-Type", "multipart/form-data")
-			res.Header().Set("Access-Control-Allow-Origin", "*")
-			res.Header().Set("Access-Control-Allow-Headers", "Content-Type,Accept")
-			return
-		}
-
-		for key, fun := range f.funcAPI {
-			if fun.pattern.MatchString(req.URL.Path) && isMethod(fun.types, req) {
-				ftype := make([]reflect.Value, 0)
-				ftype = append(ftype, f.ftype...)
-				ftype = append(ftype,
-					reflect.Indirect(reflect.ValueOf(&res)),
-					reflect.ValueOf(req),
-					reflect.ValueOf(Params(fun.pattern.FindStringSubmatch(req.URL.Path)[1:])),
-				)
-
-				a := &RunAPI{
-					functionRun: f.funcAPI[key],
-					flagRun:     true,
-					ftype:       ftype,
-					response:    res,
-					request:     req,
-					config:      f.config,
-					cookie:      &f.cookie,
-				}
-
-				a.setID()
-				flagok = true
-				ch := make(chan bool)
-				go func() {
-
-					ftype = append(ftype, reflect.ValueOf(a))
-					fn := reflect.ValueOf(f.funcAPI[key].handle)
-
-					argvCall := make([]reflect.Value, 0)
-
-					for _, funcArgv := range f.funcAPI[key].arg {
-						for key2, handlerArgv := range ftype {
-							if funcArgv == handlerArgv.Type() {
-								argvCall = append(argvCall, ftype[key2])
-							}
-						}
-					}
-
-					fn.Call(argvCall)
-
-					ch <- true
-				}()
-				select {
-				case <-ch:
-					break
-				case <-time.After(3 * time.Second):
-					break
-				}
-
-				break
-			}
-		}
+		flagok = f.runFuncRoute(res, req)
 	}
 
 	if !flagok {
@@ -388,17 +392,6 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 				bufferFile[req.URL.Path] = &CacheFile{bytes.NewBuffer(dataByte), time.Now()}
 				mutex.Unlock()
 			}
-			/*
-				types := "application/octet-stream"
-				for ext, mtypes := range memtype {
-					if strings.HasSuffix(req.URL.Path, ext) {
-						types = mtypes
-						res.Header().Set("Cache-Control", "max-age=3600, must-revalidate")
-					}
-				}
-				res.Header().Set("Content-Type", types)
-				res.Write(bufferFile[req.URL.Path].Bytes())
-			*/
 			http.ServeContent(res, req, req.URL.Path, bufferFile[req.URL.Path].TimeModify, strings.NewReader(bufferFile[req.URL.Path].Buffer.String()))
 		} else {
 			logCanal <- fmt.Sprint("[", req.RemoteAddr, "] ERROR path(1) ", req.URL.Path)
