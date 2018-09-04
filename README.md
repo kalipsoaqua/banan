@@ -13,8 +13,8 @@ func HandlerFinans(rw *web.RunApi) {
 
 func main() {
   my := web.Default()
-	my.Get("/test", HandlerTest)
-	my.Run("0.0.0.0:8888")
+  my.Get("/test", HandlerTest)
+  my.Run("0.0.0.0:8888")
 }
 
 ```  
