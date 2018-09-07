@@ -445,7 +445,7 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if !f.runFuncMiddle(res, req) {
-		http.Error(res, "No Access", 500)
+		http.Error(res, "No Access", 403)
 		log.Println("NO ACCESS")
 		return
 	}
