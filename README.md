@@ -73,7 +73,10 @@ func Test() bool {
 }
   
 // Test2 - test middleware
-func Test2() bool {
+func Test2(rw *web.RunApi, db *sql.Db) bool {
+  .....
+  rows, err := db.Query(......)
+  .....
 	return false // false -запретить выполнение роутеров
 }
 
