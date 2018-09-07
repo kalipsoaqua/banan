@@ -28,6 +28,8 @@ const (
 	NOINDEX = 1
 	// CROSS - пустая константа для кросдомена
 	CROSS = 2
+	// TIMEOUT - таймаут на выполнения ответа сервера и отдачи его клиенту
+	TIMEOUT = 3
 )
 
 // FuncAPI структура для handler функций
@@ -62,6 +64,9 @@ type RunAPI struct {
 // HandleFunc empty type func
 type HandleFunc func(...interface{})
 
+// MiddleFunc empty type func middle
+type MiddleFunc func(...interface{}) bool
+
 // Directory - path to file
 type Directory struct {
 	Name string
@@ -90,6 +95,7 @@ type Config struct {
 // Banan - struct begin
 type Banan struct {
 	funcAPI   []*FuncAPI
+	middle    []*FuncAPI
 	prefix    string
 	ftype     []reflect.Value
 	config    Config
@@ -143,6 +149,7 @@ func Default() *Banan {
 		OsSeparator = "\\"
 	}
 	f.funcAPI = make([]*FuncAPI, 0)
+	f.middle = make([]*FuncAPI, 0)
 	bufferFile = make(map[string]*CacheFile)
 	logCanal = make(chan string, 10000)
 
@@ -198,6 +205,11 @@ func (f *Banan) Use(m ...interface{}) {
 	for _, tmp := range m {
 		f.ftype = append(f.ftype, reflect.ValueOf(tmp))
 	}
+}
+
+// Middle - добавить MiddleWare
+func (f *Banan) Middle(function interface{}) {
+	f.appMiddle(function)
 }
 
 // Route - виртуальный роутер
@@ -302,6 +314,7 @@ func (f *Banan) authOK(res http.ResponseWriter, req *http.Request) (userOK bool)
 }
 
 func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok bool) {
+
 	for key, fun := range f.funcAPI {
 		if fun.pattern.MatchString(req.URL.Path) && isMethod(fun.types, req) {
 			ftype := make([]reflect.Value, 0)
@@ -325,7 +338,7 @@ func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok
 			a.setID()
 			flagok = true
 			ch := make(chan bool)
-			go func() {
+			go func(nn chan bool) {
 
 				ftype = append(ftype, reflect.ValueOf(a))
 				fn := reflect.ValueOf(f.funcAPI[key].handle)
@@ -342,17 +355,78 @@ func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok
 
 				fn.Call(argvCall)
 
-				ch <- true
-			}()
+				nn <- true
+			}(ch)
 			select {
 			case <-ch:
 				break
-			case <-time.After(3 * time.Second):
+			case <-time.After(TIMEOUT * time.Second):
 				break
 			}
 
 			break
 		}
+	}
+	return
+}
+
+func (f *Banan) runFuncMiddle(res http.ResponseWriter, req *http.Request) (flagok bool) {
+	defer func() {
+		log.Println("END MIDDLE")
+	}()
+	flagok = true
+	log.Println("IN MIDDLE")
+	for key := range f.middle {
+		ftype := make([]reflect.Value, 0)
+		ftype = append(ftype, f.ftype...)
+		ftype = append(ftype,
+			reflect.Indirect(reflect.ValueOf(&res)),
+			reflect.ValueOf(req),
+		)
+
+		a := &RunAPI{
+			functionRun: f.middle[key],
+			flagRun:     true,
+			ftype:       ftype,
+			response:    res,
+			request:     req,
+			config:      f.config,
+			cookie:      &f.cookie,
+		}
+		a.setID()
+
+		ch := make(chan bool)
+		go func(nn chan bool) {
+			status := false
+			ftype = append(ftype, reflect.ValueOf(a))
+			fn := reflect.ValueOf(f.middle[key].handle)
+
+			argvCall := make([]reflect.Value, 0)
+
+			for _, funcArgv := range f.middle[key].arg {
+				for key2, handlerArgv := range ftype {
+					if funcArgv == handlerArgv.Type() {
+						argvCall = append(argvCall, ftype[key2])
+					}
+				}
+			}
+
+			vv := fn.Call(argvCall)
+
+			switch vv[0].Type().String() {
+			case "bool":
+				status = vv[0].Bool()
+			}
+			log.Println(9999, status)
+			nn <- status
+		}(ch)
+		select {
+		case flagok = <-ch:
+			break
+		case <-time.After(TIMEOUT * time.Second):
+			break
+		}
+
 	}
 	return
 }
@@ -367,6 +441,12 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if f.basicAuth && !f.authOK(res, req) {
+		return
+	}
+
+	if !f.runFuncMiddle(res, req) {
+		http.Error(res, "No Access", 500)
+		log.Println("NO ACCESS")
 		return
 	}
 
@@ -433,6 +513,17 @@ func (f *Banan) appHandler(method, filter string, function interface{}) {
 		pattern: regexp.MustCompile("^" + strings.Replace(f.prefix+filter, ":param", `(.*?)[\/]{0,1}`, -1) + "$"),
 		handle:  function,
 		arg:     funcArg,
+	})
+}
+
+func (f *Banan) appMiddle(function interface{}) {
+	funcArg := make([]interface{}, 0)
+	for i := 0; i < reflect.ValueOf(function).Type().NumIn(); i++ {
+		funcArg = append(funcArg, reflect.ValueOf(function).Type().In(i))
+	}
+	f.middle = append(f.funcAPI, &FuncAPI{
+		handle: function,
+		arg:    funcArg,
 	})
 }
 
