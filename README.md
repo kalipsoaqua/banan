@@ -4,6 +4,7 @@
 *Маленький **web**  framework* 
 
 Директория для статики (css, js, ....) - public
+
 Директория для template (html) - template
 
 
