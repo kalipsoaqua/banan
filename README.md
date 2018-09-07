@@ -14,7 +14,7 @@
 
 Функция **Middle(func)** - добавить функцию middle для обработки до роутинга
 
-Функция **Get(pattern, handler)**,**Post(pattern, handler)**,**Put(pattern, handler)**,**Delete(pattern, handler)** - роутинг по url, pattern - путь по которому надо запустить, тот иkи иной handler
+Функция **Get(pattern, handler)**,**Post(pattern, handler)**,**Put(pattern, handler)**,**Delete(pattern, handler)** - роутинг по url, pattern - путь по которому надо запустить, тот или иной handler
 
 Функция **Run(listen, [cert])** - запуск 
 
