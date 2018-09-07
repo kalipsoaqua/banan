@@ -373,11 +373,7 @@ func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok
 }
 
 func (f *Banan) runFuncMiddle(res http.ResponseWriter, req *http.Request) (flagok bool) {
-	defer func() {
-		log.Println("END MIDDLE")
-	}()
 	flagok = true
-	log.Println("IN MIDDLE")
 	for key := range f.middle {
 		ftype := make([]reflect.Value, 0)
 		ftype = append(ftype, f.ftype...)
@@ -419,7 +415,6 @@ func (f *Banan) runFuncMiddle(res http.ResponseWriter, req *http.Request) (flago
 			case "bool":
 				status = vv[0].Bool()
 			}
-			log.Println(9999, status)
 			nn <- status
 		}(ch)
 		select {
@@ -448,7 +443,6 @@ func (f *Banan) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	if !f.runFuncMiddle(res, req) {
 		http.Error(res, "No Access", 403)
-		log.Println("NO ACCESS")
 		return
 	}
 
