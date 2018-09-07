@@ -3,6 +3,10 @@
 
 *Маленький **web**  framework* 
 
+Директория для статики (css, js, ....) - public
+Директория для template (html) - template
+
+
 Функция **Default()** - инстализация  
 
 Функция **Use(context)** - добавить контекст (например базу данных)
@@ -13,7 +17,32 @@
 
 Функция **Run(listen, [cert])** - запуск 
 
+**RunAPI**
+1. JSON(data, [CROSS])
+1. HTML(template, data, [NOINDEX])
+1. BuildHTML(template, data, [NOINDEX]) []byte
+1. TemplateHTML(template, data, [NOINDEX]) []byte
+1. IHTML(htmlString, data)
+1. TXT(txt, [CROSS])
+1. Form() - переданные данные GET,POST ....
+1. Set(name, value) - для сессии
+1. Get(name) -  для сессии
+1. Delete(name) -  для сессии
+1. Close() - для сессии
+1. RemoteIP()
+1. Body()
+1. Download(file)  
+1. Redirect(url)
+
+
 ```
+
+func HandlerParamTest(rw *web.RunApi, param web.Param) {
+  vv := rw.Form()
+  log.Println(vv, param)
+  rw.JSON(struct{OK int}{200})
+}
+
 func HandlerTest(rw *web.RunApi) {
   vv := rw.Form()
   log.Println(vv)
@@ -64,6 +93,7 @@ func main() {
   my.Get("/test", HandlerTest)
   my.Get("/test1", HandlerDBTest)
   my.Get("/test2", HandlerAllTest)
+  my.Get("/test3/:param/:param/", HandlerParamTest)
   v := my.Route('/api/')
   {
     v.Get("list-1", func1)
