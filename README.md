@@ -58,6 +58,7 @@ func HandlerDBTest(rw *web.RunApi, db *sql.Db) {
   rw.JSON(struct{OK int}{200})
 }
 
+// func HandlerAllTest(db map[string]*AllAll, rw *web.RunApi) {
 func HandlerAllTest(rw *web.RunApi, db map[string]*AllAll) {
   vv := rw.Form()
   .....
