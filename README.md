@@ -3,6 +3,16 @@
 
 *Маленький **web**  framework* 
 
+Функция **Default()** - инстализация  
+
+Функция **Use(context)** - добавить контекст (непример базу данных)
+
+Функция **Middle(func)** - добавить функцию middle для обработки до роутинга
+
+Функция **Get(pattern, handler)**,**Post(pattern, handler)**,**Put(pattern, handler)**,**Delete(pattern, handler)** - роутинг по url, pattern - путь по которому надо запустить, тот иkи иной handler
+
+Функция **Run(listen, [cert])** - запуск 
+
 ```
 func HandlerTest(rw *web.RunApi) {
   vv := rw.Form()
