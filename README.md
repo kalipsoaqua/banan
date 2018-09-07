@@ -1,7 +1,7 @@
 # banan
 
 
-*Маленький web  framework* 
+*Маленький **web**  framework* 
 
 ```
 func HandlerTest(rw *web.RunApi) {
