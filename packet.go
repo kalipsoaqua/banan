@@ -2,7 +2,9 @@ package web
 
 import (
 	"bytes"
-	"encoding/json"
+
+	"github.com/pquerna/ffjson/ffjson"
+
 	tmpl "html/template"
 	"io/ioutil"
 	"log"
@@ -529,7 +531,7 @@ func (f *Banan) appMiddle(function interface{}) {
 
 // JSON - функция формирующая в ответ json из переданной структуры
 func (c *RunAPI) JSON(h interface{}, cross ...int) {
-	result, err := json.Marshal(h)
+	result, err := ffjson.Marshal(h)
 	if err != nil {
 		logCanal <- fmt.Sprint("[", c.request.RemoteAddr, "] ERROR = ", err)
 		c.response.WriteHeader(500)
