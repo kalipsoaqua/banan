@@ -37,19 +37,19 @@
 
 ```
 
-func HandlerParamTest(rw *web.RunApi, param web.Param) {
+func HandlerParamTest(rw *web.RunAPI, param web.Param) {
   vv := rw.Form()
   log.Println(vv, param)
   rw.JSON(struct{OK int}{200})
 }
 
-func HandlerTest(rw *web.RunApi) {
+func HandlerTest(rw *web.RunAPI) {
   vv := rw.Form()
   log.Println(vv)
   rw.JSON(struct{OK int}{200})
 }
 
-func HandlerDBTest(rw *web.RunApi, db *sql.Db) {
+func HandlerDBTest(rw *web.RunAPI, db *sql.Db) {
   vv := rw.Form()
   .....
     rows, err := db.Query(.....)
@@ -58,8 +58,9 @@ func HandlerDBTest(rw *web.RunApi, db *sql.Db) {
   rw.JSON(struct{OK int}{200})
 }
 
-// func HandlerAllTest(db map[string]*AllAll, rw *web.RunApi) {
-func HandlerAllTest(rw *web.RunApi, db map[string]*AllAll) {
+// func HandlerAllTest(db map[string]*AllAll, res http.ResponseWriter, req *http.Request) {
+// func HandlerAllTest(db map[string]*AllAll, rw *web.RunAPI) {
+func HandlerAllTest(rw *web.RunAPI, db map[string]*AllAll) {
   vv := rw.Form()
   .....
     db["test"] = .....
@@ -74,7 +75,7 @@ func Test() bool {
 }
   
 // Test2 - test middleware
-func Test2(rw *web.RunApi, db *sql.Db) bool {
+func Test2(rw *web.RunAPI, db *sql.Db) bool {
   .....
   rows, err := db.Query(......)
   .....
