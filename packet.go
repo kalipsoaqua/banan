@@ -372,14 +372,24 @@ func (f *Banan) runFuncRoute(res http.ResponseWriter, req *http.Request) (flagok
 	return
 }
 
+func groupToArray(arr [][]string) (data []string) {
+	for _, tmp := range arr {
+		data = append(data, tmp[1])
+	}
+	return
+}
+
 func (f *Banan) runFuncMiddle(res http.ResponseWriter, req *http.Request) (flagok bool) {
 	flagok = true
+	pattern := regexp.MustCompile(`[\/]{1}(\w{0,})`)
+
 	for key := range f.middle {
 		ftype := make([]reflect.Value, 0)
 		ftype = append(ftype, f.ftype...)
 		ftype = append(ftype,
 			reflect.Indirect(reflect.ValueOf(&res)),
 			reflect.ValueOf(req),
+			reflect.ValueOf(Params(groupToArray(pattern.FindAllStringSubmatch(req.URL.Path, -1)))),
 		)
 
 		a := &RunAPI{
